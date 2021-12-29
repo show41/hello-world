@@ -1,0 +1,199 @@
+#!/usr/bin/env python3.6
+import os
+import re
+from os.path import join as pjoin
+from copy import deepcopy
+import pandas as pd
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+import matplotlib.ticker as mtick
+from matplotlib.ticker import MultipleLocator
+
+def main():
+    spec_stat_dir = 'C:\\Users\\jinxin\\Desktop\\wangsa\\figure\\results\\spec'
+    app_stat_dir =  'C:\\Users\\jinxin\\Desktop\\wangsa\\figure\\results\\app'
+    log_file_name = 'bimodal_ip_stride_no_olympus_random_random_nru1_nru1_1core.log'
+    spec_matrix=get_breakdown_olympus(spec_stat_dir,log_file_name)
+    app_matrix = get_breakdown_olympus(app_stat_dir, log_file_name)
+
+    df_spec = pd.DataFrame.from_dict(spec_matrix, orient='index')
+    df_spec.to_csv('.\\csv\\spec_olympus_breakdown.csv', index=True)
+
+    df_app = pd.DataFrame.from_dict(app_matrix, orient='index')
+    df_app.to_csv('.\\csv\\app_olympus_breakdown.csv', index=True)
+
+    print(spec_matrix)
+    print(app_matrix)
+
+    non_value=[]
+    fix_value=[]
+    intra_value=[]
+    cross_value=[]
+    xticks_name=[]
+
+    for k in spec_matrix.keys():
+        non_value.append(spec_matrix[k]['non'])
+        fix_value.append(spec_matrix[k]['fix'])
+        intra_value.append(spec_matrix[k]['intra'])
+        cross_value.append(spec_matrix[k]['cross'])
+        xticks_name.append(k)
+
+
+    app_non_value = []
+    app_fix_value = []
+    app_intra_value = []
+    app_cross_value = []
+
+    for k in app_matrix.keys():
+        app_non_value.append(app_matrix[k]['non'])
+        app_fix_value.append(app_matrix[k]['fix'])
+        app_intra_value.append(app_matrix[k]['intra'])
+        app_cross_value.append(app_matrix[k]['cross'])
+        xticks_name.append(k)
+
+
+    width = 0.3  # the width of the bars: can also be len(x) sequence
+
+    x_spec_labels = tuple(spec_matrix.keys())
+    ind = np.arange(len(x_spec_labels))*0.5
+
+    color1 = '#ADDFE6'
+    color2 = '#52B9DA'
+    color3 = '#2267A8'
+    color4 = '#1E2262'
+
+    fig, ax = plt.subplots()
+    # print(non_value + fix_value)
+    # fig.set_size_inches((7.3, 2.5))  # Width Height
+    names=['NONE', 'Intra-Page', 'Cross-Page', 'Regular Stride']
+    ax.bar(ind, non_value, width, label=names[0], color=color1)
+    ax.bar(ind, intra_value, width, non_value, label=names[1], color=color2)
+    ax.bar(ind, cross_value, width, np.sum([non_value,intra_value],axis=0), label=names[2], color=color3)
+    ax.bar(ind, fix_value, width, np.sum([non_value,intra_value,cross_value],axis=0), label=names[3], color=color4)
+
+    app_ind = np.arange(len(app_matrix.keys()))*0.5 + ind[len(spec_matrix.keys()) - 1] + 0.5
+
+    print(app_ind)
+    print(ind)
+
+    ax.bar(app_ind, app_non_value, width, color=color1)
+    ax.bar(app_ind, app_intra_value, width, app_non_value, color=color2)
+    ax.bar(app_ind, app_cross_value, width, np.sum([app_non_value, app_intra_value], axis=0), color=color3)
+    ax.bar(app_ind, app_fix_value, width, np.sum([app_non_value, app_cross_value, app_intra_value], axis=0),  color=color4)
+
+    index = np.append(ind, app_ind)
+
+    count = 0
+    name = []
+    for pre in xticks_name:
+        if pre == 'DrivingDirec':
+            pre = 'Driving\nDirec'
+        if pre == 'SpeechRecog':
+            pre = 'Speech\nRecog'
+        if pre == 'WebBrowsing':
+            pre = 'Web\nBrowsing'
+        if pre == '2DGAME':
+            pre = '2D\nGAME'
+        if pre == '3DGAME':
+            pre = '3D\nGAME'
+        if pre == 'EdgeDetec':
+            pre = 'Edge\nDetec'
+        if pre == 'GemsFDTD':
+            pre = 'Gems\nFDTD'
+        if pre == 'libquantum':
+            pre = 'lib-\nquantum'
+        if pre == 'InsMSG':
+            pre = 'Ins\nMSG'
+        name.append(pre)
+
+    plt.xticks(index, name, fontsize=8,family='Gill Sans MT', size='medium')
+    fig.set_size_inches((6.5, 3))  # Width Height
+    plt.subplots_adjust(bottom=.1, top=.80, left=.138, right=.95)
+    #ax.legend(ncol=4, fontsize=20)
+
+    fmt = '%.f%%'
+    yticks = mtick.FormatStrFormatter(fmt)
+    ymajorLocator = MultipleLocator(20)
+    ax.yaxis.set_major_formatter(yticks)
+    ax.yaxis.set_major_locator(ymajorLocator)
+
+    ax.set_ylim([5,100])
+    ax.set_xlim([-0.3,8.8])
+    plt.ylabel('Pecentage of Active Time',family='Gill Sans MT', size='x-large')
+    plt.legend(loc='upper center',ncol=4)
+    plt.tight_layout()
+    outfile_name = 'C:\\Users\\jinxin\\Desktop\\ISCA2019\\isca_pobu\\ISCA_2019\\figure\\C5_olympus_breakdown'
+    ax.yaxis.grid(color='k', linestyle='--', linewidth=1, alpha=0.3)
+    plt.savefig(outfile_name + '.eps', format='eps')
+    plt.savefig(outfile_name + '.png')
+    plt.show()
+    # get_breakdown_olympus(spec_stat_dir, log_file_name)
+def get_breakdown_olympus(stat_dir: str, log_file_name: str) -> dict:
+    pairs_s = [x for x in os.listdir(stat_dir)]
+    matrix = {}
+    stats = {}
+    geostats = {}
+    # geostats = {'ipc':0,'req':0}
+    sum_inst = 0
+    sum_req = 0
+    # print(len(pairs_s))
+    for fn in pairs_s:
+        addr = pjoin(stat_dir, fn, log_file_name)
+        f = open(addr, 'r', encoding='UTF-8')
+        print('now addr is %s' % addr)
+
+        none = re.compile('None\swin_counter\s=\s([0-9]*)')
+        fix = re.compile('Stride\swin_counter\s=\s([0-9]*)')
+        intra = re.compile('Intra-Page\swin_counter\s=\s([0-9]*)')
+        cross = re.compile('Cross-Page\swin_counter\s=\s([0-9]*)')
+
+        # p_req = re.compile('ramulator.incoming_requests_per_channel\s+(\d+.\d)\s+#')
+        for line in f:
+            # if line.startswith('\s0None'):
+            if none.search(line):
+                print('None detected')
+                # new_insts = int(p_insts.search(line).group(1))
+                none_d = none.search(line).group(1)
+                # stats['ipc'] = float(new_insts)
+                print(none_d)
+            # break
+            if fix.search(line):
+                print('Fix detected')
+                # new_insts = int(p_insts.search(line).group(1))
+                fix_d = fix.search(line).group(1)
+                # stats['req'] = float(new_req)
+                print(fix_d)
+
+            if intra.search(line):
+                print('Intra detected')
+                # new_insts = int(p_insts.search(line).group(1))
+                intra_d = intra.search(line).group(1)
+                # stats['req'] = float(new_req)
+                print(intra_d)
+            if cross.search(line):
+                print('Cross detected')
+                # new_insts = int(p_insts.search(line).group(1))
+                cross_d = cross.search(line).group(1)
+                # stats['req'] = float(new_req)
+                print(cross_d)
+                # break
+        sum = float(none_d) + float(fix_d) + float(intra_d) + float(cross_d)
+        print(sum)
+        stats['non']=(float(none_d)/float(sum))*100
+        stats['fix'] = float(fix_d) / float(sum)*100
+        stats['intra'] = float(intra_d) / float(sum)*100
+        stats['cross'] = float(cross_d) / float(sum)*100
+        if(fn.find('_')>0):
+            pre,po = fn.split('_')
+        else:
+            pre=fn
+        matrix[pre] = deepcopy(stats)
+        # print(matrix[fn])
+        f.close()
+    return matrix
+
+if __name__ == '__main__':
+    main()
