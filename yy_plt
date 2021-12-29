@@ -1,0 +1,146 @@
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+from os.path import join as pjoin
+import sys
+
+
+def read_raw(filename):
+    with open(filename) as f:
+        df = pd.read_csv(filepath_or_buffer=f, header=0, sep=',',
+                         index_col=0, engine='python')
+        return df
+
+target_indices = {
+    'Cycles' : 2,
+    'ROB Full': 8,
+    'IQ Full': 11,
+    'LQ Full': 14,
+    'SQ Full': 17,
+    'ROB portion': 18,
+    'IQ Portion': 3,
+    'LQ Portion': 4,
+    'SQ Portion': 5,
+    'numInsts': 19,
+    'predQoS': 27,
+    'ipc': 22,
+}
+
+bms = [
+    'astar_cactusADM',
+    # 'leslie3d_gcc',
+    # 'bwaves_mcf',
+    # 'leslie3d_bzip2',
+    # 'h264ref_omnetpp',
+    # 'leslie3d_lbm',
+    # 'h264ref_perlbench',
+    # 'gcc_namd',
+    # 'gcc_milc',
+]
+
+for bm in bms:
+    print(bm)
+    #df = read_raw('E:\\my_projects\\python\\find_example\\csv\\{}.csv'.format(bm))
+    df = read_raw('.\\csv\\{}.csv'.format(bm))
+    fig, (ax1, ax2) = plt.subplots(2, 1)
+    fig.set_size_inches((8.5/2, 5))
+
+    # further process
+    df['dIQ Full'] = (df['IQ Full'] - df['IQ Full'].shift(1)) / 8
+    df['dROB Full'] = (df['ROB Full'] - df['ROB Full'].shift(1)) / 8
+    df['dROB Wait'] = (df['ROB Wait'] - df['ROB Wait'].shift(1)) / 8
+    df['st_local_ipc'] = (df['st_inst'] - df['st_inst'].shift(1)) / 20000
+    df['local_ipc'] = (df['numInsts'] - df['numInsts'].shift(1)) / 20000
+
+    for i in range(0, len(df)):
+        if df['st_local_ipc'][i] == 0:
+            if 0 < i < len(df) - 1:
+                df['st_local_ipc'][i] = \
+                    (df['st_local_ipc'][i - 1] + df['st_local_ipc'][i + 1])/2
+
+    df['local_QoS'] = df['local_ipc'] / df['st_local_ipc']
+
+    df['ROB Portion'] /= 224
+    df['IQ Portion'] /= 96
+
+    print(len(df))
+
+    df.to_csv('.\\csv\\{}_proc.csv'.format(bm), index=True)
+
+    # for ROB:
+    df_rob = df[650:700]
+
+    # for IQ:
+    df_iq = df[920:980]
+    handles = []
+
+    markers = [3, 19, 28, 40]
+    handles.append(ax1.plot(df_rob['numInsts'], df_rob['dROB Full'], color='#a50f15',
+                            markevery=markers, marker='s'))
+    _ax1 = ax1.twinx()
+    _ax1.plot([df_rob['numInsts'][650], df_rob['numInsts'][699]],
+              [0.9, 0.9], "k--")
+    # markers = [i for i in range(19, 36)]
+    handles.append(_ax1.plot(df_rob['numInsts'], df_rob['ROB Portion'], color='#737373',
+                             markevery=markers, marker='o'))
+    handles.append(_ax1.plot(df_rob['numInsts'], df_rob['local_QoS'], color='#006d2c'))
+
+
+    markers = [18, 32, 53]
+    handles.append(ax2.plot(df_iq['numInsts'], df_iq['dIQ Full'], color='#de2d26',
+                            markevery=markers, marker='s'))
+    _ax2 = ax2.twinx()
+    _ax2.plot([df_iq['numInsts'][920], df_iq['numInsts'][979]],
+              [0.9, 0.9], "k--")
+    handles.append(_ax2.plot(df_iq['numInsts'], df_iq['IQ Portion'], color='#3182bd',
+                             markevery=markers, marker='o'))
+    handles.append(_ax2.plot(df_iq['numInsts'], df_iq['local_QoS'], color='#9ecae1'))
+
+    ax1.set_ylim([0, 6500])
+    _ax1.set_ylim([0, 1])
+    ax2.set_ylim([0, 2500])
+    _ax2.set_ylim([0, 1])
+
+    ax1.set_ylabel('ROB Stall Events')
+    _ax1.set_ylabel('ROB Quota\n (HPT Performance)')
+    ax1.set_xlabel('Insts')
+    ax2.set_xlabel('Insts')
+    ax2.set_ylabel('IQ Stall Events')
+    _ax2.set_ylabel('IQ Quota\n (HPT Real QoS)')
+    ax1.xaxis.set_label_coords(1.15,-0.055)
+    ax2.xaxis.set_label_coords(1.15, -0.055)
+    # Shrink current axis by 20%
+    def shrink(ax):
+        box = ax.get_position()
+        shrink_rate = 0
+        ax.set_position([box.x0, box.y0 + box.height*shrink_rate,
+                         box.width, box.height*(1-shrink_rate)])
+
+    shrink(ax1)
+    shrink(ax2)
+    shrink(_ax1)
+    shrink(_ax2)
+
+    legend_anchor = (1.05, 1.15)
+
+    ax1.legend(
+        [h[0] for h in handles[:3]],
+        ['ROB Stall', 'HPT ROB Quota', 'HPT Performance'],
+        bbox_to_anchor=legend_anchor,
+        ncol=3, loc='best', fontsize='small'
+    )
+
+    # ax2.legend(
+    #     [h[0] for h in handles[3:]],
+    #     ['IQ Full', 'HPT IQ Portion', 'HPT real QoS'],
+    #     bbox_to_anchor=legend_anchor,
+    #     ncol=2, loc='lower center', fontsize='x-small'
+    # )
+
+    plt.tight_layout()
+    outfile_name = 'Dynamic-Controlling'
+    plt.savefig(outfile_name + '.eps', format='eps')
+    plt.savefig(outfile_name + '.png')
+    plt.show()
