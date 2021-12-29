@@ -1,0 +1,82 @@
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+import pandas as pd
+
+df = pd.read_csv('./stacked_bar.csv', header=0, sep=',', index_col=0, engine='python')
+#print(df)
+#print(df['prefetch-on-Load'])
+#df['prefetch-on-LOAD']
+names=('prefetch-on-LOAD','prefetch-on-RFO','prefetch-on-PREFETCH')
+color1 = '#1E2262'
+color2 = '#52B9DA'
+color3 = '#2267A8'
+x_labels = tuple(df.index)
+ind = np.arange(len(x_labels))*0.5
+width = 0.3       # the width of the bars: can also be len(x) sequence
+fig,ax = plt.subplots()
+fig.set_size_inches((4, 2))
+#fig=plt.figure(figsize=(5,5))
+#ax=fig.add_subplot(111)
+plt.tight_layout()
+ax.bar(ind, df['prefetch-on-LOAD'], width, color=color1,label=names[0])
+ax.bar(ind, df['prefetch-on-RFO'], width, df['prefetch-on-LOAD'],color=color2,label=names[1])
+ax.bar(ind, df['prefetch-on-PREFETCH'], width, df['prefetch-on-RFO']+df['prefetch-on-LOAD'],color=color3,label=names[2])
+ax.set_ylim([1,2])
+print(ind)
+ax.set_xlim([-0.2,10.2])
+
+name = []
+for pre in df.index:
+
+
+    if pre == 'DrivingDirec':
+        pre = 'Driving\n Direc'
+
+
+    if pre == 'SpeechRecog':
+        pre = 'Speech\n Recog'
+
+
+    if pre == 'WebBrowsing':
+        pre = 'Web\nBrowsing'
+
+
+    if pre == 'EdgeDetec':
+        pre = 'Edge\nDetec'
+
+    if pre == 'AVERAGE-SPEC':
+        pre = 'Average\nSPEC'
+
+    if pre == 'AVERAGE-Mobile':
+        pre = 'Average\nMobile'
+
+    if pre == 'AVERAGE-ALL':
+        pre = 'Average\nALL'
+
+    if pre == 'GemsFDTD':
+        pre = 'Gems\nFDTD'
+
+    if pre == 'libquantum':
+        pre = 'lib-\nquantum'
+
+    if pre == '2DGAME':
+        pre = '2D\nGAME'
+    if pre == '3DGAME':
+        pre = '3D\nGAME'
+    name.append(pre)
+plt.xticks(ind, name,fontsize=22,family='Gill Sans MT')
+#ax.set_xticks(ind)
+#x_labels = tuple(df.index)
+#xtick_name=ax.set_xticklabels(x_labels)
+#plt.setp(xtick_name,rotation=45,fontsize=9,ha='right')
+plt.legend(loc=0,fontsize='xx-large')
+plt.yticks([1.0, 1.2, 1.4,1.6, 1.8, 2.0],fontsize=22)
+ax.yaxis.grid(color='k', linestyle='--', linewidth=1, alpha=0.3)
+plt.ylabel('Speedup',fontsize=18,family='Gill Sans MT')
+outfile_name = '.\\master\\figure\\prophet_break_down'
+plt.savefig(outfile_name+'.eps', format='eps')
+plt.savefig(outfile_name+'.png')
+# plt.figure()
+plt.subplots_adjust(bottom=.2, top=.99, left=.15, right=.99)
+plt.show()
