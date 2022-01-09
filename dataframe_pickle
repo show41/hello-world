@@ -1,0 +1,38 @@
+import pandas as pd
+import pickle
+import matplotlib.pyplot as plt
+# my_df = pd.DataFrame({'name':['gcc_001','gcc_002','mcf_002','mcf_001'],
+#                       'test':['gcc','gcc','mcf','mcf'],
+#                       'dew_bw':[3,4,5,6],
+#                       })
+# my_d = {'name':['gcc_001','gcc_002','mcf_002','mcf_001'],
+#         'ipc_gain':[0.1, 0.2, 0.13, 0.3]}
+
+# with open('my_df.dat', 'wb') as f:
+#     pickle.dump(my_df,f)
+with open('my_df.dat', 'rb') as f2:
+    new_df = pickle.load(f2)
+print('new_df type is %s' % type(new_df))
+# print(new_df)
+# with open('my_d.dat', 'wb') as f3:
+#     pickle.dump(my_d,f3)
+with open('my_d.dat', 'rb') as f4:
+    new_d = pickle.load(f4)
+# print('new_d type is %s' % type(new_d))
+# test_v = new_d['name','ipc_gain']
+# print('name value is %s' % test_v)
+# trans_df = pd.DataFrame([new_d])
+# trans_df = pd.DataFrame(list(new_d.items()))
+trans_df = pd.DataFrame.from_dict(new_d,orient='columns')
+print('trans_df type is %s' % type(trans_df))
+# print(trans_df)
+f_d = pd.merge(new_df,trans_df,on='name')
+avg_bw = f_d.loc[f_d['ipc_gain']<0.2]
+print(avg_bw)
+print(avg_bw['dew_bw'].mean())
+plt.figure(figsize=(20, 8), dpi=100)
+plt.hist(avg_bw['dew_bw'], 1, normed=1, cumulative='true',)
+plt.show()
+# test_v = trans_df['name','ipc_gain']
+# print('name value is %s' % test_v)
+
